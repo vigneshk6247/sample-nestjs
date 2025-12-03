@@ -74,13 +74,19 @@ jobs:
 
     # Commit changes
     - name: Commit updated deployment file
+      shell: powershell
       run: |
         git config --global user.email "runner@example.com"
         git config --global user.name "GitHub Runner"
+
         git add k8s/deployment.yaml
-        git commit -m "Auto-update image tag to ${env:SHORT_SHA}" || echo "No changes to commit"
+
+        git commit -m "Auto-update image tag to ${env:SHORT_SHA}"
+        if ($LASTEXITCODE -ne 0) { Write-Output "No changes to commit"; exit 0 }
+
         git pull --rebase origin main
         git push origin main
+
 
 
 
