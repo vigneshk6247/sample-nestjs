@@ -7,6 +7,6 @@ export class AppController {
 
   @Get()
   getHello(): { message: string } {
-    return { message: 'Hello from Minikube with latest changes!' };
+    return { message: 'Hello from Minikube with LatestChanges!' };
   }
 }
