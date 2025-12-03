@@ -63,3 +63,25 @@ jobs:
         kubectl set image deployment/sample-nestjs sample-nestjs="${dockerUser}/${imageName}:${env:SHORT_SHA}" --namespace=default
         kubectl rollout status deployment/sample-nestjs --namespace=default
 
+    # Update deployment.yaml in repo
+    - name: Update deployment.yaml in repo
+      shell: powershell
+      run: |
+        (Get-Content k8s/deployment.yaml) `
+          -replace "image:.*", "image: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${env:SHORT_SHA}" `
+          | Set-Content k8s/deployment.yaml
+
+
+    # Commit changes
+    - name: Commit updated deployment file
+      run: |
+        git config --global user.email "runner@example.com"
+        git config --global user.name "GitHub Runner"
+        git add k8s/deployment.yaml
+        git commit -m "Auto-update image tag to ${env:SHORT_SHA}" || echo "No changes to commit"
+        git pull --rebase origin main
+        git push origin main
+
+
+
+
