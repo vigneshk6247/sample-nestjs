@@ -33,8 +33,8 @@ jobs:
         $dockerUser = "${{ secrets.DOCKER_USERNAME }}"
         $imageName = "${{ secrets.IMAGE_NAME }}"
 
-        $tag = "$dockerUser/$imageName:$env:SHORT_SHA"
-        $latest = "$dockerUser/$imageName:latest"
+        $tag = "${dockerUser}/${imageName}:${env:SHORT_SHA}"
+        $latest = "${dockerUser}/${imageName}:latest"
 
         docker build -t $tag .
         docker build -t $latest .
@@ -46,11 +46,12 @@ jobs:
         $dockerUser = "${{ secrets.DOCKER_USERNAME }}"
         $imageName = "${{ secrets.IMAGE_NAME }}"
 
-        $tag = "$dockerUser/$imageName:$env:SHORT_SHA"
-        $latest = "$dockerUser/$imageName:latest"
+        $tag = "${dockerUser}/${imageName}:${env:SHORT_SHA}"
+        $latest = "${dockerUser}/${imageName}:latest"
 
         docker push $tag
         docker push $latest
+
 
     # Deploy to Minikube
     - name: Auto Deploy to Minikube
@@ -59,5 +60,6 @@ jobs:
         $dockerUser = "${{ secrets.DOCKER_USERNAME }}"
         $imageName = "${{ secrets.IMAGE_NAME }}"
 
-        kubectl set image deployment/sample-nestjs sample-nestjs="$dockerUser/$imageName:$env:SHORT_SHA" --namespace=default
+        kubectl set image deployment/sample-nestjs sample-nestjs="${dockerUser}/${imageName}:${env:SHORT_SHA}" --namespace=default
         kubectl rollout status deployment/sample-nestjs --namespace=default
+
