@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: self-hosted   # IMPORTANT: Use your own runner!
+    runs-on: self-hosted   # This runs on your Windows PC
 
     steps:
     - name: Checkout code
@@ -18,21 +18,46 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    # Extract short git commit SHA (PowerShell safe)
     - name: Extract short Git commit SHA
-      id: vars
-      run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $env:GITHUB_ENV
+      id: sha
+      shell: pwsh
+      run: |
+        $short = $env:GITHUB_SHA.Substring(0,8)
+        echo "SHORT_SHA=$short" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+    # Build Docker image with both tags: latest + commit SHA
     - name: Build Docker images
+      shell: pwsh
       run: |
-        docker build -t $env:DOCKER_USERNAME/$env:IMAGE_NAME:${SHORT_SHA} .
-        docker build -t $env:DOCKER_USERNAME/$env:IMAGE_NAME:latest .
+        $dockerUser = "${{ secrets.DOCKER_USERNAME }}"
+        $imageName = "${{ secrets.IMAGE_NAME }}"
 
+        $tag = "$dockerUser/$imageName:$env:SHORT_SHA"
+        $latest = "$dockerUser/$imageName:latest"
+
+        docker build -t $tag .
+        docker build -t $latest .
+
+    # Push images to Docker Hub
     - name: Push Docker images
+      shell: pwsh
       run: |
-        docker push $env:DOCKER_USERNAME/$env:IMAGE_NAME:${SHORT_SHA}
-        docker push $env:DOCKER_USERNAME/$env:IMAGE_NAME:latest
+        $dockerUser = "${{ secrets.DOCKER_USERNAME }}"
+        $imageName = "${{ secrets.IMAGE_NAME }}"
 
+        $tag = "$dockerUser/$imageName:$env:SHORT_SHA"
+        $latest = "$dockerUser/$imageName:latest"
+
+        docker push $tag
+        docker push $latest
+
+    # Deploy to local Minikube
     - name: Auto Deploy to Minikube
+      shell: pwsh
       run: |
-        kubectl set image deployment/sample-nestjs sample-nestjs=$env:DOCKER_USERNAME/$env:IMAGE_NAME:${SHORT_SHA} --namespace=default
+        $dockerUser = "${{ secrets.DOCKER_USERNAME }}"
+        $imageName = "${{ secrets.IMAGE_NAME }}"
+
+        kubectl set image deployment/sample-nestjs sample-nestjs="$dockerUser/$imageName:$env:SHORT_SHA" --namespace=default
         kubectl rollout status deployment/sample-nestjs --namespace=default
