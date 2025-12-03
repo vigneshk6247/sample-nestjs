@@ -1,12 +1,12 @@
-name: Build & Deploy to Minikube
+name: Build & Auto Deploy to Minikube
 
 on:
   push:
     branches: [ "main" ]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-deploy:
+    runs-on: self-hosted   # IMPORTANT: Use your own runner!
 
     steps:
     - name: Checkout code
@@ -18,31 +18,21 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
-    - name: Extract short SHA
+    - name: Extract short Git commit SHA
       id: vars
-      run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $GITHUB_ENV
+      run: echo "SHORT_SHA=${GITHUB_SHA::8}" >> $env:GITHUB_ENV
 
-    - name: Build Docker image
+    - name: Build Docker images
       run: |
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${SHORT_SHA} .
-        docker build -t ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:latest .
+        docker build -t $env:DOCKER_USERNAME/$env:IMAGE_NAME:${SHORT_SHA} .
+        docker build -t $env:DOCKER_USERNAME/$env:IMAGE_NAME:latest .
 
-    - name: Push Docker image
+    - name: Push Docker images
       run: |
-        docker push ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${SHORT_SHA}
-        docker push ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:latest
+        docker push $env:DOCKER_USERNAME/$env:IMAGE_NAME:${SHORT_SHA}
+        docker push $env:DOCKER_USERNAME/$env:IMAGE_NAME:latest
 
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-
-    - name: Create kubeconfig file
+    - name: Auto Deploy to Minikube
       run: |
-        echo "${{ secrets.KUBECONFIG_DATA }}" | base64 --decode > kubeconfig
-
-    - name: Update deployment image tag
-      run: |
-        sed -i "s|image:.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ secrets.IMAGE_NAME }}:${SHORT_SHA}|g" k8s/deployment.yaml
-
-    - name: Apply Kubernetes manifests
-      run: |
-        KUBECONFIG=./kubeconfig kubectl apply -f k8s/
+        kubectl set image deployment/sample-nestjs sample-nestjs=$env:DOCKER_USERNAME/$env:IMAGE_NAME:${SHORT_SHA} --namespace=default
+        kubectl rollout status deployment/sample-nestjs --namespace=default
