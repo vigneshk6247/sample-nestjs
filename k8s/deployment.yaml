@@ -14,6 +14,6 @@ spec:
     spec:
       containers:
         - name: sample-nestjs
-          image: vigneshk1045/sample-nestjs:9314b46b
+          image: vigneshk1045/sample-nestjs:e1e61bc7
           ports:
             - containerPort: 3000
